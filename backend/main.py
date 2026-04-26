@@ -11,10 +11,12 @@ app = FastAPI(title="AI Bank Cash Forecast API", version="1.0.0")
 
 frontend_origins = os.getenv("FRONTEND_ORIGINS", "*")
 allowed_origins = ["*"] if frontend_origins.strip() == "*" else [origin.strip() for origin in frontend_origins.split(",") if origin.strip()]
+frontend_origin_regex = os.getenv("FRONTEND_ORIGIN_REGEX", r"https://.*\.vercel\.app")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=frontend_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

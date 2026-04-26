@@ -42,6 +42,7 @@ Frontend integration:
 
 - Backend URL used by dashboard JS: `https://ai-bank-cash-forecasting.onrender.com`
 - CORS origins env var: `FRONTEND_ORIGINS` (comma-separated URLs)
+- Vercel preview support: `FRONTEND_ORIGIN_REGEX=https://.*\\.vercel\\.app`
 
 ## Important deployment note
 
