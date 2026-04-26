@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timezone
 
+import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -38,6 +39,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Registry columns to include in forecast/alert responses when present
+_LOCATION_COLS = ["Region", "Location", "Branch", "City", "District", "Area", "ATM_Type", "Max_Capacity_UZS"]
+
+
+def _extra_cols(df: pd.DataFrame, base: list[str]) -> list[str]:
+    return [c for c in _LOCATION_COLS if c in df.columns and c not in base]
+
 
 @app.get("/")
 def root() -> dict:
@@ -55,9 +63,9 @@ def forecast(forecast_days: int = 3) -> dict:
         raise HTTPException(status_code=400, detail="forecast_days must be between 1 and 14")
     data = load_data()
     pred_df = compute_predictions(data["atm_registry"], data["atm_history"], forecast_days=forecast_days)
-    rows = [] if pred_df.empty else pred_df[
-        ["ID", "Day_Ahead", "Pred_Withdrawals", "Pred_Deposits", "Pred_Balance", "Risk"]
-    ].to_dict(orient="records")
+    base = ["ID", "Day_Ahead", "Pred_Withdrawals", "Pred_Deposits", "Pred_Balance", "Risk"]
+    cols = base + _extra_cols(pred_df, base)
+    rows = [] if pred_df.empty else pred_df[cols].to_dict(orient="records")
     return {"forecast_days": forecast_days, "rows": rows}
 
 
@@ -69,4 +77,34 @@ def alerts(forecast_days: int = 3) -> dict:
         return {"alerts": []}
 
     alert_df = pred_df[pred_df["Risk"] != "OK"].sort_values(["ID", "Day_Ahead"]).groupby("ID").first().reset_index()
-    return {"alerts": alert_df[["ID", "ATM_Type", "Day_Ahead", "Pred_Balance", "Risk"]].to_dict(orient="records")}
+    base = ["ID", "ATM_Type", "Day_Ahead", "Pred_Balance", "Risk"]
+    cols = base + _extra_cols(alert_df, base)
+    return {"alerts": alert_df[cols].to_dict(orient="records")}
+
+
+@app.get("/history")
+def history(days: int = 30) -> dict:
+    if days < 1 or days > 365:
+        raise HTTPException(status_code=400, detail="days must be between 1 and 365")
+    data = load_data()
+    hist = data["atm_history"].copy()
+    hist["Oper_Day"] = pd.to_datetime(hist["Oper_Day"], errors="coerce")
+    hist = hist.dropna(subset=["Oper_Day"])
+    if hist.empty:
+        return {"rows": []}
+
+    cutoff = hist["Oper_Day"].max() - pd.Timedelta(days=days - 1)
+    hist = hist[hist["Oper_Day"] >= cutoff]
+
+    daily = (
+        hist.groupby("Oper_Day")
+        .agg(
+            Total_Balance=("Cash_Level_EOD_UZS", "sum"),
+            Total_Withdrawals=("Withdrawals_UZS", "sum"),
+            Total_Deposits=("Deposits_UZS", "sum"),
+        )
+        .reset_index()
+        .sort_values("Oper_Day")
+    )
+    daily["Oper_Day"] = daily["Oper_Day"].dt.strftime("%Y-%m-%d")
+    return {"rows": daily.to_dict(orient="records")}
