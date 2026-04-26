@@ -39,12 +39,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Registry columns to include in forecast/alert responses when present
-_LOCATION_COLS = ["Region", "Location", "Branch", "City", "District", "Area", "ATM_Type", "Max_Capacity_UZS"]
+# Registry columns to include in forecast/alert responses when present.
+# We include ALL non-ID columns from the registry so the frontend can pick
+# whichever location/name column actually exists in the sheet.
+_SKIP_COLS = {"ATM_ID"}  # already present as "ID" in predictions
 
 
 def _extra_cols(df: pd.DataFrame, base: list[str]) -> list[str]:
-    return [c for c in _LOCATION_COLS if c in df.columns and c not in base]
+    """Return any registry column not already in base."""
+    return [c for c in df.columns if c not in base and c not in _SKIP_COLS]
 
 
 @app.get("/")
@@ -80,6 +83,14 @@ def alerts(forecast_days: int = 3) -> dict:
     base = ["ID", "ATM_Type", "Day_Ahead", "Pred_Balance", "Risk"]
     cols = base + _extra_cols(alert_df, base)
     return {"alerts": alert_df[cols].to_dict(orient="records")}
+
+
+@app.get("/registry")
+def registry() -> dict:
+    """Return ATM registry with all columns — used by frontend to discover label fields."""
+    data = load_data()
+    reg = data["atm_registry"]
+    return {"columns": list(reg.columns), "rows": reg.head(3).to_dict(orient="records")}
 
 
 @app.get("/history")

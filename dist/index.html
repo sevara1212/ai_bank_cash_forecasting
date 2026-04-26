@@ -445,9 +445,26 @@ const pageMap={landing:'Platform Overview',dashboard:'Main Dashboard',ai:'AI Pre
 const subMap={landing:'AI-Based Cash Balance Forecasting System',dashboard:'Live ATM forecast · real-time · UZS',ai:'Ensemble forecasting engine',monitor:'Live system status',optimize:'Incassation & limit optimization',integrations:'Connected systems'};
 const API_BASE='https://ai-bank-cash-forecasting.onrender.com';
 
-// Best human-readable label: prefer Region/Location over raw ATM ID
+// Columns that are NOT useful as human-readable labels
+const _skipLabelCols=new Set(['ID','ATM_ID','Day_Ahead','Pred_Withdrawals','Pred_Deposits',
+  'Pred_Balance','Risk','Max_Capacity_UZS','ATM_Type','index']);
+
+// Return the best human-readable location label from a row.
+// Tries well-known names first, then falls back to any string column that
+// isn't a number or known non-label field — so it works regardless of the
+// exact column name in the Google Sheet.
 function atmLabel(r){
-  return r.Region||r.Location||r.Branch||r.City||r.District||r.Area||r.ID||'—';
+  // Preferred names (common in Uzbek/Russian bank sheets)
+  const preferred=['Region','Location','Branch','City','District','Area',
+    'Filial','Viloyat','Shahar','Tuman','Address','Name','Nomi',
+    'region','location','branch','city','district','name'];
+  for(const k of preferred){if(r[k]&&String(r[k]).trim())return String(r[k]).trim();}
+  // Fallback: first string-valued column that isn't a skip col
+  for(const [k,v] of Object.entries(r)){
+    if(_skipLabelCols.has(k))continue;
+    if(typeof v==='string'&&v.trim()&&isNaN(Number(v)))return v.trim();
+  }
+  return r.ID||r.ATM_ID||'—';
 }
 
 // Retry with exponential backoff to handle Render free-tier cold starts (~30-60s wake time)
