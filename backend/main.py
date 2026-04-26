@@ -1,11 +1,24 @@
+import os
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.data_loader import load_data
 from backend.forecasting import compute_predictions
 
 app = FastAPI(title="AI Bank Cash Forecast API", version="1.0.0")
+
+frontend_origins = os.getenv("FRONTEND_ORIGINS", "*")
+allowed_origins = ["*"] if frontend_origins.strip() == "*" else [origin.strip() for origin in frontend_origins.split(",") if origin.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")

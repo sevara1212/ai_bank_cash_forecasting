@@ -357,10 +357,12 @@ tbody tr:hover td{background:#ffffff04;color:var(--text)}
 
       <div class="rec-panel">
         <div class="rec-title">AI Recommendations</div>
-        <div class="rec-item"><div class="rec-dot"></div>Branch Yunusobod needs cash replenishment by April 28 — predicted 340M UZS shortfall with 87% confidence.</div>
-        <div class="rec-item"><div class="rec-dot"></div>Reduce idle cash at Mirzo Ulugbek branch by 120M UZS — excess detected outside salary period peak.</div>
-        <div class="rec-item"><div class="rec-dot"></div>Schedule incassation on April 29 (salary day +2) for Chilanzar cluster — historical demand peak of +180% expected.</div>
-        <div class="rec-item"><div class="rec-dot"></div>Anomaly flagged at Sergeli-03 kassa: unusually high withdrawal rate (+3.2σ) since 11:00. Investigate and monitor.</div>
+        <div id="ai-recommendations">
+          <div class="rec-item"><div class="rec-dot"></div>Branch Yunusobod needs cash replenishment by April 28 — predicted 340M UZS shortfall with 87% confidence.</div>
+          <div class="rec-item"><div class="rec-dot"></div>Reduce idle cash at Mirzo Ulugbek branch by 120M UZS — excess detected outside salary period peak.</div>
+          <div class="rec-item"><div class="rec-dot"></div>Schedule incassation on April 29 (salary day +2) for Chilanzar cluster — historical demand peak of +180% expected.</div>
+          <div class="rec-item"><div class="rec-dot"></div>Anomaly flagged at Sergeli-03 kassa: unusually high withdrawal rate (+3.2σ) since 11:00. Investigate and monitor.</div>
+        </div>
       </div>
     </div>
 
@@ -441,6 +443,67 @@ tbody tr:hover td{background:#ffffff04;color:var(--text)}
 <script>
 const pageMap={landing:'Platform Overview',dashboard:'Main Dashboard',ai:'AI Prediction Module',monitor:'Real-Time Monitoring',optimize:'Cash Optimization',integrations:'System Integrations'};
 const subMap={landing:'AI-Based Cash Balance Forecasting System',dashboard:'Live forecast data — 25 branches · UZS',ai:'Ensemble forecasting engine',monitor:'Live system status',optimize:'Incassation & limit optimization',integrations:'Connected systems'};
+const API_BASE='https://ai-bank-cash-forecasting.onrender.com';
+
+async function fetchJson(path){
+  const res=await fetch(`${API_BASE}${path}`);
+  if(!res.ok)throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function riskClassFromCode(risk){
+  if(risk==='CRITICAL_EMPTY')return 'high';
+  if(risk==='LOW_CASH')return 'med';
+  return 'low';
+}
+
+function renderForecastTable(rows){
+  const tbody=document.getElementById('forecast-table');
+  if(!tbody)return;
+  tbody.innerHTML='';
+  rows.slice(0,10).forEach(r=>{
+    const forecastM=Math.round((Number(r.Pred_Withdrawals)||0)/1_000_000);
+    const balanceM=Math.round((Number(r.Pred_Balance)||0)/1_000_000);
+    const diff=balanceM-forecastM;
+    const diffStr=(diff>=0?'+':'')+diff+'M';
+    const risk=riskClassFromCode(r.Risk);
+    const rClass=risk==='low'?'risk-low':risk==='med'?'risk-med':'risk-high';
+    tbody.innerHTML+=`<tr><td style="font-family:var(--font-mono);font-size:12px">Day +${r.Day_Ahead}</td><td>${r.ID}</td><td style="font-family:var(--font-mono)">${forecastM}M</td><td style="font-family:var(--font-mono)">${balanceM}M</td><td style="font-family:var(--font-mono);color:${diff>=0?'var(--green)':'var(--red)'}">${diffStr}</td><td><span class="risk-badge ${rClass}">${(r.Risk||'OK')}</span></td></tr>`;
+  });
+}
+
+function renderAIRecommendations(alertRows){
+  const container=document.getElementById('ai-recommendations');
+  if(!container)return;
+  container.innerHTML='';
+  const rows=alertRows.slice(0,4);
+  if(!rows.length){
+    container.innerHTML='<div class="rec-item"><div class="rec-dot"></div>No active alerts. Cash levels are currently in safe range.</div>';
+    return;
+  }
+  rows.forEach(r=>{
+    const balM=Math.round((Number(r.Pred_Balance)||0)/1_000_000);
+    container.innerHTML+=`<div class="rec-item"><div class="rec-dot"></div>${r.ID} (${r.ATM_Type||'ATM'}) is flagged as ${r.Risk}. Predicted balance in Day +${r.Day_Ahead}: ${balM}M UZS. Schedule replenishment.</div>`;
+  });
+}
+
+async function loadLiveForecastTable(){
+  try{
+    const data=await fetchJson('/forecast?forecast_days=2');
+    renderForecastTable(data.rows||[]);
+  }catch(e){
+    console.error('Live forecast fetch failed',e);
+  }
+}
+
+async function loadLiveAIRecommendations(){
+  try{
+    const data=await fetchJson('/alerts?forecast_days=2');
+    renderAIRecommendations(data.alerts||[]);
+  }catch(e){
+    console.error('Live alerts fetch failed',e);
+  }
+}
 
 function navigate(page,el){
   document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
@@ -475,6 +538,7 @@ function initDashboardCharts(){
   const tableData=[{date:'Apr 25',branch:'Yunusobod',fc:340,act:318,risk:'low'},{date:'Apr 25',branch:'Chilanzar',fc:280,act:305,risk:'low'},{date:'Apr 24',branch:'Sergeli',fc:195,act:187,risk:'low'},{date:'Apr 24',branch:'Mirzo Ulug.',fc:420,act:388,risk:'med'},{date:'Apr 23',branch:'Bektemir',fc:160,act:198,risk:'med'},{date:'Apr 23',branch:'Olmazor',fc:310,act:271,risk:'low'},{date:'Apr 22',branch:'Uchtepa',fc:240,act:229,risk:'low'},{date:'Apr 22',branch:'Yashnobod',fc:175,act:204,risk:'high'}];
   const tbody=document.getElementById('forecast-table');
   tableData.forEach(r=>{const diff=r.act-r.fc;const diffStr=(diff>=0?'+':'')+diff+'M';const rClass=r.risk==='low'?'risk-low':r.risk==='med'?'risk-med':'risk-high';tbody.innerHTML+=`<tr><td style="font-family:var(--font-mono);font-size:12px">${r.date}</td><td>${r.branch}</td><td style="font-family:var(--font-mono)">${r.fc}M</td><td style="font-family:var(--font-mono)">${r.act}M</td><td style="font-family:var(--font-mono);color:${diff>=0?'var(--green)':'var(--red)'}">${diffStr}</td><td><span class="risk-badge ${rClass}">${r.risk.toUpperCase()}</span></td></tr>`});
+  loadLiveForecastTable();
 }
 
 function initAICharts(){
@@ -485,6 +549,7 @@ function initAICharts(){
   const upper=fcast.map(v=>v+Math.round(v*.12));
   const lower=fcast.map(v=>v-Math.round(v*.12));
   new Chart(document.getElementById('forecastChart'),{type:'line',data:{labels,datasets:[{label:'Historical',data:[...hist,...Array(6).fill(null)],borderColor:'#3b82f6',borderWidth:2,pointRadius:0,tension:.4},{label:'Forecast',data:[...Array(14).fill(null),...fcast],borderColor:'#14b8a6',borderWidth:2,borderDash:[6,3],pointRadius:3,tension:.4},{label:'Upper CI',data:[...Array(14).fill(null),...upper],borderColor:'#14b8a640',backgroundColor:'#14b8a615',fill:'+1',borderWidth:1,pointRadius:0,tension:.4},{label:'Lower CI',data:[...Array(14).fill(null),...lower],borderColor:'#14b8a640',fill:false,borderWidth:1,pointRadius:0,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{color:'#ffffff08'}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
+  loadLiveAIRecommendations();
 }
 
 function initMonitorCharts(){

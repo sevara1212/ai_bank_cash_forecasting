@@ -38,6 +38,11 @@ API endpoints:
 - `GET /forecast?forecast_days=3`
 - `GET /alerts?forecast_days=3`
 
+Frontend integration:
+
+- Backend URL used by dashboard JS: `https://ai-bank-cash-forecasting.onrender.com`
+- CORS origins env var: `FRONTEND_ORIGINS` (comma-separated URLs)
+
 ## Important deployment note
 
 Netlify can host the static frontend (`dist`) but does not run this Python backend directly.
