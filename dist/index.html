@@ -442,8 +442,13 @@ tbody tr:hover td{background:#ffffff04;color:var(--text)}
 
 <script>
 const pageMap={landing:'Platform Overview',dashboard:'Main Dashboard',ai:'AI Prediction Module',monitor:'Real-Time Monitoring',optimize:'Cash Optimization',integrations:'System Integrations'};
-const subMap={landing:'AI-Based Cash Balance Forecasting System',dashboard:'Live forecast data — ATM network · UZS',ai:'Ensemble forecasting engine',monitor:'Live system status',optimize:'Incassation & limit optimization',integrations:'Connected systems'};
+const subMap={landing:'AI-Based Cash Balance Forecasting System',dashboard:'Live ATM forecast · real-time · UZS',ai:'Ensemble forecasting engine',monitor:'Live system status',optimize:'Incassation & limit optimization',integrations:'Connected systems'};
 const API_BASE='https://ai-bank-cash-forecasting.onrender.com';
+
+// Best human-readable label: prefer Region/Location over raw ATM ID
+function atmLabel(r){
+  return r.Region||r.Location||r.Branch||r.City||r.District||r.Area||r.ID||'—';
+}
 
 // Retry with exponential backoff to handle Render free-tier cold starts (~30-60s wake time)
 async function fetchWithRetry(path,maxAttempts=5,baseDelay=5000){
@@ -488,7 +493,7 @@ function renderForecastTable(rows){
     const diff=balanceM-forecastM;
     const diffStr=(diff>=0?'+':'')+diff+'M';
     const rClass=riskClassFromCode(r.Risk)==='low'?'risk-low':riskClassFromCode(r.Risk)==='med'?'risk-med':'risk-high';
-    tbody.innerHTML+=`<tr><td style="font-family:var(--font-mono);font-size:12px">Day +${r.Day_Ahead}</td><td>${r.ID}</td><td style="font-family:var(--font-mono)">${forecastM}M</td><td style="font-family:var(--font-mono)">${balanceM}M</td><td style="font-family:var(--font-mono);color:${diff>=0?'var(--green)':'var(--red)'}">${diffStr}</td><td><span class="risk-badge ${rClass}">${r.Risk||'OK'}</span></td></tr>`;
+    tbody.innerHTML+=`<tr><td style="font-family:var(--font-mono);font-size:12px">Day +${r.Day_Ahead}</td><td>${atmLabel(r)}</td><td style="font-family:var(--font-mono)">${forecastM}M</td><td style="font-family:var(--font-mono)">${balanceM}M</td><td style="font-family:var(--font-mono);color:${diff>=0?'var(--green)':'var(--red)'}">${diffStr}</td><td><span class="risk-badge ${rClass}">${r.Risk||'OK'}</span></td></tr>`;
   });
 }
 
@@ -502,7 +507,8 @@ function renderAIRecommendations(alertRows){
   }
   alertRows.slice(0,6).forEach(r=>{
     const balM=Math.round((Number(r.Pred_Balance)||0)/1_000_000);
-    container.innerHTML+=`<div class="rec-item"><div class="rec-dot" style="background:${r.Risk==='CRITICAL_EMPTY'?'var(--red)':'var(--amber)'}"></div>${r.ID} (${r.ATM_Type||'ATM'}) — <strong>${r.Risk}</strong>. Predicted balance Day +${r.Day_Ahead}: ${balM}M UZS. Schedule replenishment.</div>`;
+    const label=atmLabel(r);
+    container.innerHTML+=`<div class="rec-item"><div class="rec-dot" style="background:${r.Risk==='CRITICAL_EMPTY'?'var(--red)':'var(--amber)'}"></div><strong>${label}</strong> (${r.ATM_Type||'ATM'}) — ${r.Risk}. Predicted balance Day +${r.Day_Ahead}: ${balM}M UZS. Schedule replenishment.</div>`;
   });
 }
 
@@ -555,27 +561,18 @@ function renderMonitorATMs(forecastRows){
   }
   atms.forEach(r=>{
     const color=r.Risk==='CRITICAL_EMPTY'?'red':r.Risk==='LOW_CASH'?'amber':'green';
-    const label=r.Risk==='CRITICAL_EMPTY'?'Critical':r.Risk==='LOW_CASH'?'Warning':'Safe';
+    const status=r.Risk==='CRITICAL_EMPTY'?'Critical':r.Risk==='LOW_CASH'?'Warning':'Safe';
     const balM=Math.round((Number(r.Pred_Balance)||0)/1_000_000);
-    grid.innerHTML+=`<div class="atm-card"><div class="atm-id">${r.ID}</div><div class="atm-val" style="color:var(--${color})">${balM}M</div><div style="font-size:10px;color:var(--text3);margin-top:4px">${label}</div></div>`;
+    grid.innerHTML+=`<div class="atm-card"><div class="atm-id">${atmLabel(r)}</div><div class="atm-val" style="color:var(--${color})">${balM}M</div><div style="font-size:10px;color:var(--text3);margin-top:4px">${status}</div></div>`;
   });
 }
 
-// Single shared cache so every page section reuses the same fetch
+// ── shared data cache ────────────────────────────────────────────────────────
 let liveCache=null;
-let liveFetching=false;
 let liveFetchPromise=null;
 
 async function loadAllLiveData(){
-  if(liveCache){
-    // Already fetched — just re-render
-    renderForecastTable(liveCache.forecast.rows||[]);
-    renderAIRecommendations(liveCache.alerts.alerts||[]);
-    updateKPIs(liveCache.forecast.rows||[],liveCache.alerts.alerts||[]);
-    renderMonitorATMs(liveCache.forecast.rows||[]);
-    return;
-  }
-  // If a fetch is already in flight, wait for it
+  if(liveCache){applyLiveData();return;}
   if(liveFetchPromise){await liveFetchPromise;return;}
 
   const tbody=document.getElementById('forecast-table');
@@ -583,25 +580,113 @@ async function loadAllLiveData(){
 
   liveFetchPromise=(async()=>{
     try{
-      const [fData,aData]=await Promise.all([
-        fetchWithRetry('/forecast?forecast_days=3'),
-        fetchWithRetry('/alerts?forecast_days=3')
+      const [fData,aData,hData]=await Promise.all([
+        fetchWithRetry('/forecast?forecast_days=7'),
+        fetchWithRetry('/alerts?forecast_days=7'),
+        fetchWithRetry('/history?days=90')
       ]);
-      liveCache={forecast:fData,alerts:aData};
-      renderForecastTable(fData.rows||[]);
-      renderAIRecommendations(aData.alerts||[]);
-      updateKPIs(fData.rows||[],aData.alerts||[]);
-      renderMonitorATMs(fData.rows||[]);
+      liveCache={forecast:fData,alerts:aData,history:hData};
+      applyLiveData();
     }catch(e){
       console.error('Live data fetch failed after all retries:',e);
       if(tbody)tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--red);padding:28px;font-family:var(--font-mono)">Backend unreachable. Check Render deployment logs.</td></tr>';
-    }finally{
-      liveFetchPromise=null;
-    }
+    }finally{liveFetchPromise=null;}
   })();
   await liveFetchPromise;
 }
 
+function applyLiveData(){
+  if(!liveCache)return;
+  const fRows=liveCache.forecast.rows||[];
+  const aRows=liveCache.alerts.alerts||[];
+  const hRows=liveCache.history.rows||[];
+  renderForecastTable(fRows);
+  renderAIRecommendations(aRows);
+  updateKPIs(fRows,aRows);
+  renderMonitorATMs(fRows);
+  // Rebuild every chart that has a canvas in the DOM
+  if(document.getElementById('demandChart'))buildDemandChart(hRows);
+  if(document.getElementById('riskChart'))buildRiskChart(fRows);
+  if(document.getElementById('seasonChart'))buildSeasonChart(hRows);
+  if(document.getElementById('liquidityChart'))buildLiquidityChart(fRows);
+  if(document.getElementById('forecastChart'))buildForecastChart(hRows,fRows);
+  if(document.getElementById('liveChart'))buildLiveChart(hRows);
+}
+
+// ── chart builders (all use real data, destroy before recreate) ──────────────
+const ch={};
+const xOpts={ticks:{color:'#4a5a75',font:{size:10},maxTicksLimit:10},grid:{color:'#ffffff08'}};
+const yOpts={ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}};
+
+function buildDemandChart(hRows){
+  if(ch.demand)ch.demand.destroy();
+  const labels=hRows.map(r=>r.Oper_Day.slice(5).replace('-','/'));
+  ch.demand=new Chart(document.getElementById('demandChart'),{type:'line',data:{labels,datasets:[
+    {label:'Withdrawals',data:hRows.map(r=>Math.round((r.Total_Withdrawals||0)/1e6)),borderColor:'#3b82f6',backgroundColor:'#3b82f610',tension:.4,borderWidth:2,pointRadius:0},
+    {label:'Balance',data:hRows.map(r=>Math.round((r.Total_Balance||0)/1e6)),borderColor:'#14b8a6',backgroundColor:'#14b8a608',tension:.4,borderWidth:2,borderDash:[5,3],pointRadius:0}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896b0',font:{size:11},padding:10}}},scales:{x:xOpts,y:yOpts}}});
+}
+
+function buildRiskChart(fRows){
+  if(ch.risk)ch.risk.destroy();
+  const days=[...new Set(fRows.map(r=>r.Day_Ahead))].sort((a,b)=>a-b);
+  const total=new Set(fRows.map(r=>r.ID)).size||1;
+  const pct=days.map(d=>{const dr=fRows.filter(r=>r.Day_Ahead===d);return Math.round(dr.filter(r=>r.Risk!=='OK').length/total*100);});
+  ch.risk=new Chart(document.getElementById('riskChart'),{type:'bar',data:{labels:days.map(d=>`Day +${d}`),datasets:[{label:'% ATMs at risk',data:pct,backgroundColor:pct.map(v=>v>50?'#ef444480':v>20?'#f59e0b80':'#22c55e80')}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:11}},grid:{display:false}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'%'},grid:{color:'#ffffff08'},max:100}}}});
+}
+
+function buildSeasonChart(hRows){
+  if(ch.season)ch.season.destroy();
+  const byMonth={};
+  hRows.forEach(r=>{const m=r.Oper_Day.slice(0,7);if(!byMonth[m])byMonth[m]=0;byMonth[m]+=(Number(r.Total_Withdrawals)||0);});
+  const months=Object.keys(byMonth).sort();
+  const mNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  ch.season=new Chart(document.getElementById('seasonChart'),{type:'bar',data:{labels:months.map(m=>mNames[+m.slice(5)-1]+' '+m.slice(2,4)),datasets:[{label:'Withdrawals',data:months.map(m=>Math.round(byMonth[m]/1e6)),backgroundColor:'#3b82f660',borderColor:'#3b82f6',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{display:false}},y:yOpts}}});
+}
+
+function buildLiquidityChart(fRows){
+  if(ch.liquidity)ch.liquidity.destroy();
+  const d1=fRows.filter(r=>r.Day_Ahead===1);
+  const ok=d1.filter(r=>r.Risk==='OK').length;
+  const low=d1.filter(r=>r.Risk==='LOW_CASH').length;
+  const crit=d1.filter(r=>r.Risk==='CRITICAL_EMPTY').length;
+  ch.liquidity=new Chart(document.getElementById('liquidityChart'),{type:'doughnut',data:{labels:['Optimal','Low Cash','Critical'],datasets:[{data:[ok,low,crit],backgroundColor:['#22c55e80','#f59e0b80','#ef444480'],borderColor:['#22c55e','#f59e0b','#ef4444'],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8896b0',font:{size:11},padding:12}}}}});
+}
+
+function buildForecastChart(hRows,fRows){
+  if(ch.forecast)ch.forecast.destroy();
+  const hist=hRows.slice(-14);
+  const histLabels=hist.map(r=>r.Oper_Day.slice(5).replace('-','/'));
+  const histData=hist.map(r=>Math.round((r.Total_Withdrawals||0)/1e6));
+  // project future trend from last 5 days
+  const last5=hist.slice(-5).map(r=>Number(r.Total_Withdrawals)||0);
+  const trend=last5.length>1?(last5[last5.length-1]-last5[0])/((last5.length-1)*1e6):0;
+  const lastVal=Math.round((last5[last5.length-1]||0)/1e6);
+  const fDays=[...new Set(fRows.map(r=>r.Day_Ahead))].sort((a,b)=>a-b);
+  const fcast=fDays.map(d=>Math.max(0,Math.round(lastVal+trend*d)));
+  const upper=fcast.map(v=>Math.round(v*1.12));
+  const lower=fcast.map(v=>Math.round(v*0.88));
+  const allLabels=[...histLabels,...fDays.map(d=>`+${d}d`)];
+  ch.forecast=new Chart(document.getElementById('forecastChart'),{type:'line',data:{labels:allLabels,datasets:[
+    {label:'Historical',data:[...histData,...Array(fDays.length).fill(null)],borderColor:'#3b82f6',borderWidth:2,pointRadius:0,tension:.4},
+    {label:'Forecast',data:[...Array(hist.length).fill(null),...fcast],borderColor:'#14b8a6',borderWidth:2,borderDash:[6,3],pointRadius:3,tension:.4},
+    {label:'Upper CI',data:[...Array(hist.length).fill(null),...upper],borderColor:'#14b8a640',backgroundColor:'#14b8a615',fill:'+1',borderWidth:1,pointRadius:0,tension:.4},
+    {label:'Lower CI',data:[...Array(hist.length).fill(null),...lower],borderColor:'#14b8a640',fill:false,borderWidth:1,pointRadius:0,tension:.4}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{color:'#ffffff08'}},y:yOpts}}});
+}
+
+function buildLiveChart(hRows){
+  if(ch.live)ch.live.destroy();
+  const recent=hRows.slice(-30);
+  const labels=recent.map(r=>r.Oper_Day.slice(5).replace('-','/'));
+  ch.live=new Chart(document.getElementById('liveChart'),{type:'line',data:{labels,datasets:[
+    {label:'Balance',data:recent.map(r=>Math.round((r.Total_Balance||0)/1e6)),borderColor:'#3b82f6',tension:.4,borderWidth:2,pointRadius:0},
+    {label:'Withdrawals',data:recent.map(r=>Math.round((r.Total_Withdrawals||0)/1e6)),borderColor:'#14b8a6',tension:.4,borderWidth:2,pointRadius:0},
+    {label:'Deposits',data:recent.map(r=>Math.round((r.Total_Deposits||0)/1e6)),borderColor:'#a855f7',tension:.4,borderWidth:2,pointRadius:0}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896b0',font:{size:11},padding:12}}},scales:{x:xOpts,y:yOpts}}});
+}
+
+// ── navigation & page init ────────────────────────────────────────────────────
 function navigate(page,el){
   document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
@@ -615,60 +700,34 @@ function navigate(page,el){
   if(page==='optimize')initOptCharts();
 }
 
-function randArr(n,min,max){return Array.from({length:n},()=>Math.round(min+Math.random()*(max-min)))}
-
-let chartsInited={};
 function initDashboardCharts(){
-  if(chartsInited.dashboard)return;chartsInited.dashboard=true;
-  const labels=Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-29+i);return`${d.getDate()}/${d.getMonth()+1}`});
-  const actual=randArr(30,800,2200);
-  const pred=actual.map(v=>Math.round(v*(.9+Math.random()*.2)));
-  new Chart(document.getElementById('demandChart'),{type:'line',data:{labels,datasets:[{label:'Actual',data:actual,borderColor:'#3b82f6',backgroundColor:'#3b82f610',tension:.4,borderWidth:2,pointRadius:0},{label:'Forecast',data:pred,borderColor:'#14b8a6',backgroundColor:'#14b8a608',tension:.4,borderWidth:2,borderDash:[5,3],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10},maxTicksLimit:8},grid:{color:'#ffffff08'}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
-
-  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  new Chart(document.getElementById('riskChart'),{type:'bar',data:{labels:days,datasets:[{label:'Risk %',data:[8,12,6,19,14,7,3],backgroundColor:days.map((_,i)=>[8,12,6,19,14,7,3][i]>15?'#ef444480':'#f59e0b80')}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:11}},grid:{display:false}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'%'},grid:{color:'#ffffff08'},max:25}}}});
-
-  new Chart(document.getElementById('seasonChart'),{type:'bar',data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{label:'Cash Flow',data:[1200,1100,1800,1400,1300,1500,1600,1400,1300,1350,1450,1900],backgroundColor:'#3b82f660',borderColor:'#3b82f6',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
-
-  new Chart(document.getElementById('liquidityChart'),{type:'doughnut',data:{labels:['Optimal','Warning','Critical'],datasets:[{data:[68,22,10],backgroundColor:['#22c55e80','#f59e0b80','#ef444480'],borderColor:['#22c55e','#f59e0b','#ef4444'],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8896b0',font:{size:11},padding:12}}}}});
-
-  // No mock table data — load live immediately
-  loadAllLiveData();
+  if(liveCache)applyLiveData();
+  else loadAllLiveData();
 }
 
 function initAICharts(){
-  if(chartsInited.ai)return;chartsInited.ai=true;
-  const labels=Array.from({length:20},(_,i)=>`Day ${i+1}`);
-  const hist=randArr(14,900,1800);
-  const fcast=randArr(6,1100,1900);
-  const upper=fcast.map(v=>v+Math.round(v*.12));
-  const lower=fcast.map(v=>v-Math.round(v*.12));
-  new Chart(document.getElementById('forecastChart'),{type:'line',data:{labels,datasets:[{label:'Historical',data:[...hist,...Array(6).fill(null)],borderColor:'#3b82f6',borderWidth:2,pointRadius:0,tension:.4},{label:'Forecast',data:[...Array(14).fill(null),...fcast],borderColor:'#14b8a6',borderWidth:2,borderDash:[6,3],pointRadius:3,tension:.4},{label:'Upper CI',data:[...Array(14).fill(null),...upper],borderColor:'#14b8a640',backgroundColor:'#14b8a615',fill:'+1',borderWidth:1,pointRadius:0,tension:.4},{label:'Lower CI',data:[...Array(14).fill(null),...lower],borderColor:'#14b8a640',fill:false,borderWidth:1,pointRadius:0,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{color:'#ffffff08'}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
-  // Reuse cache if already loaded, otherwise trigger fetch
-  if(liveCache)renderAIRecommendations(liveCache.alerts.alerts||[]);
+  if(liveCache)applyLiveData();
   else loadAllLiveData();
 }
 
 function initMonitorCharts(){
-  if(chartsInited.monitor)return;chartsInited.monitor=true;
-  const hours=Array.from({length:24},(_,i)=>i+':00');
-  new Chart(document.getElementById('liveChart'),{type:'line',data:{labels:hours,datasets:[{label:'Central',data:randArr(24,1000,1400),borderColor:'#3b82f6',tension:.4,borderWidth:2,pointRadius:0},{label:'Branch A',data:randArr(24,200,450),borderColor:'#14b8a6',tension:.4,borderWidth:2,pointRadius:0},{label:'ATM Net',data:randArr(24,600,1100),borderColor:'#a855f7',tension:.4,borderWidth:2,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896b0',font:{size:11},padding:12}}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10},maxTicksLimit:8},grid:{color:'#ffffff08'}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
-  // Reuse cache if already loaded, otherwise trigger fetch
-  if(liveCache)renderMonitorATMs(liveCache.forecast.rows||[]);
+  if(liveCache)applyLiveData();
   else loadAllLiveData();
 }
 
 function initOptCharts(){
-  if(chartsInited.opt)return;chartsInited.opt=true;
+  if(ch.opt)return;
+  // Optimization page keeps static illustrative data (no matching API endpoint)
   const branches=['Yunusobod','Chilanzar','Sergeli','Mirzo Ulug.','Bektemir'];
-  new Chart(document.getElementById('optChart'),{type:'bar',data:{labels:branches,datasets:[{label:'Current Limit',data:[500,380,280,450,200],backgroundColor:'#3b82f640',borderColor:'#3b82f6',borderWidth:1},{label:'Recommended',data:[420,350,310,380,240],backgroundColor:'#14b8a640',borderColor:'#14b8a6',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896b0',font:{size:11},padding:10}}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
+  ch.opt=new Chart(document.getElementById('optChart'),{type:'bar',data:{labels:branches,datasets:[{label:'Current Limit',data:[500,380,280,450,200],backgroundColor:'#3b82f640',borderColor:'#3b82f6',borderWidth:1},{label:'Recommended',data:[420,350,310,380,240],backgroundColor:'#14b8a640',borderColor:'#14b8a6',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896b0',font:{size:11},padding:10}}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{display:false}},y:yOpts}}});
   const schedules=[{name:'Yunusobod HQ',time:'Apr 28 · 09:00',amount:'320M UZS',c:'red'},{name:'Sergeli Branch',time:'Apr 28 · 14:00',amount:'180M UZS',c:'red'},{name:'Chilanzar',time:'Apr 29 · 10:00',amount:'240M UZS',c:'amber'},{name:'Bektemir',time:'Apr 30 · 09:00',amount:'120M UZS',c:'green'},{name:'Olmazor',time:'May 1 · 11:00',amount:'200M UZS',c:'green'}];
   const sl=document.getElementById('schedule-list');
-  schedules.forEach(s=>{sl.innerHTML+=`<div class="schedule-item"><div class="sch-left"><div class="sch-dot" style="background:var(--${s.c})"></div><div><div class="sch-name">${s.name}</div><div class="sch-time">${s.time}</div></div></div><div class="sch-amount">${s.amount}</div></div>`});
-  const data=[180,120,95,60,40,25];
-  new Chart(document.getElementById('excessChart'),{type:'bar',data:{labels:['Mirzo U.','Yunusobod','Chilanzar','Olmazor','Uchtepa','Others'],datasets:[{label:'Excess (M)',data,backgroundColor:data.map(v=>v>100?'#ef444450':v>60?'#f59e0b50':'#22c55e50'),borderColor:data.map(v=>v>100?'#ef4444':v>60?'#f59e0b':'#22c55e'),borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
+  schedules.forEach(s=>{sl.innerHTML+=`<div class="schedule-item"><div class="sch-left"><div class="sch-dot" style="background:var(--${s.c})"></div><div><div class="sch-name">${s.name}</div><div class="sch-time">${s.time}</div></div></div><div class="sch-amount">${s.amount}</div></div>`;});
+  const exData=[180,120,95,60,40,25];
+  ch.excess=new Chart(document.getElementById('excessChart'),{type:'bar',data:{labels:['Mirzo U.','Yunusobod','Chilanzar','Olmazor','Uchtepa','Others'],datasets:[{label:'Excess (M)',data:exData,backgroundColor:exData.map(v=>v>100?'#ef444450':v>60?'#f59e0b50':'#22c55e50'),borderColor:exData.map(v=>v>100?'#ef4444':v>60?'#f59e0b':'#22c55e'),borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{display:false}},y:yOpts}}});
 }
 
+// ── run forecast button ───────────────────────────────────────────────────────
 let forecasting=false;
 function runForecast(){
   if(forecasting)return;
@@ -676,14 +735,13 @@ function runForecast(){
   const btn=document.getElementById('run-btn');
   btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Running...';
   btn.style.opacity='.7';
-  liveCache=null; // Force fresh fetch from backend
-  setTimeout(()=>{
-    if(chartsInited.ai){const c=Chart.getChart('forecastChart');if(c){c.destroy();chartsInited.ai=false;}}
-    initAICharts();
+  liveCache=null; // force fresh fetch
+  setTimeout(async()=>{
+    await loadAllLiveData();
     btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Forecast';
     btn.style.opacity='1';
     forecasting=false;
-  },1400);
+  },800);
 }
 </script>
 </body>
