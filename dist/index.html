@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CashFlow AI — Treasury Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0e1a;--bg2:#0f1524;--bg3:#141928;--surface:#1a2035;--surface2:#1e2740;
+  --border:#ffffff12;--border2:#ffffff1e;
+  --text:#e8eef8;--text2:#8896b0;--text3:#4a5a75;
+  --blue:#3b82f6;--blue2:#1d4ed8;--blue-glow:#3b82f630;
+  --teal:#14b8a6;--teal-glow:#14b8a620;
+  --amber:#f59e0b;--amber-glow:#f59e0b20;
+  --red:#ef4444;--red-glow:#ef444420;
+  --green:#22c55e;--green-glow:#22c55e20;
+  --purple:#a855f7;
+  --font-display:'Syne',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'DM Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;overflow-x:hidden}
+.app{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{width:220px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;padding:0}
+.logo{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--blue),var(--teal));border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.logo-icon svg{width:18px;height:18px;fill:white}
+.logo-name{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.3px}
+.logo-tag{font-size:10px;color:var(--text3);font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.nav{flex:1;padding:12px 0}
+.nav-section{padding:8px 16px 4px;font-size:10px;color:var(--text3);font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-radius:0;transition:all .15s;color:var(--text2);font-size:13px;font-weight:400;border-left:2px solid transparent;margin:1px 0}
+.nav a.nav-item{text-decoration:none}
+.nav-item:hover{color:var(--text);background:#ffffff06}
+.nav-item.active{color:var(--blue);background:var(--blue-glow);border-left-color:var(--blue)}
+.nav-item svg{width:15px;height:15px;flex-shrink:0}
+.sidebar-bottom{padding:16px;border-top:1px solid var(--border)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px;box-shadow:0 0 6px var(--green)}
+.status-label{font-size:11px;color:var(--text2)}
+
+/* MAIN */
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column}
+.topbar{padding:14px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);position:sticky;top:0;z-index:50}
+.topbar-left{display:flex;flex-direction:column}
+.page-title{font-family:var(--font-display);font-size:17px;font-weight:600;color:var(--text)}
+.page-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.badge{background:var(--blue-glow);color:var(--blue);padding:4px 10px;border-radius:20px;font-size:11px;font-family:var(--font-mono);border:1px solid var(--blue)30}
+.content{padding:24px 28px;flex:1}
+
+/* PAGE SECTIONS */
+.page-section{display:none}
+.page-section.active{display:block}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;transition:border-color .2s}
+.kpi-card:hover{border-color:var(--border2)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:12px 12px 0 0}
+.kpi-card.blue::before{background:linear-gradient(90deg,var(--blue),transparent)}
+.kpi-card.teal::before{background:linear-gradient(90deg,var(--teal),transparent)}
+.kpi-card.amber::before{background:linear-gradient(90deg,var(--amber),transparent)}
+.kpi-card.red::before{background:linear-gradient(90deg,var(--red),transparent)}
+.kpi-card.green::before{background:linear-gradient(90deg,var(--green),transparent)}
+.kpi-label{font-size:11px;color:var(--text3);font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px}
+.kpi-value{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--text);line-height:1;margin-bottom:6px}
+.kpi-delta{font-size:11px;display:flex;align-items:center;gap:4px}
+.delta-up{color:var(--green)}
+.delta-down{color:var(--red)}
+.delta-icon{font-size:10px}
+
+/* CHARTS GRID */
+.charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
+.chart-full{grid-column:1/-1}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.chart-title{font-size:13px;font-weight:500;color:var(--text);font-family:var(--font-display)}
+.chart-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.chart-tag{font-size:10px;font-family:var(--font-mono);padding:3px 8px;border-radius:10px;background:#ffffff08;color:var(--text3);border:1px solid var(--border)}
+
+/* TABLE */
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:16px}
+.table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+table{width:100%;border-collapse:collapse}
+thead th{padding:10px 16px;text-align:left;font-size:11px;color:var(--text3);font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--bg3)}
+tbody td{padding:12px 16px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#ffffff04;color:var(--text)}
+.risk-badge{padding:3px 8px;border-radius:6px;font-size:11px;font-family:var(--font-mono);font-weight:500}
+.risk-low{background:var(--green-glow);color:var(--green);border:1px solid var(--green)30}
+.risk-med{background:var(--amber-glow);color:var(--amber);border:1px solid var(--amber)30}
+.risk-high{background:var(--red-glow);color:var(--red);border:1px solid var(--red)30}
+
+/* LANDING */
+.hero{padding:60px 28px 40px;text-align:center;position:relative}
+.hero-eyebrow{font-family:var(--font-mono);font-size:11px;color:var(--teal);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+.hero-title{font-family:var(--font-display);font-size:42px;font-weight:700;line-height:1.1;color:var(--text);margin-bottom:12px;letter-spacing:-1px}
+.hero-title span{background:linear-gradient(135deg,var(--blue),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{font-size:15px;color:var(--text2);max-width:520px;margin:0 auto 28px;line-height:1.7}
+.btn-primary{background:linear-gradient(135deg,var(--blue),var(--blue2));color:white;border:none;padding:12px 28px;border-radius:8px;font-size:14px;font-family:var(--font-display);font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.3px}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--blue);border:1px solid var(--blue)50;padding:12px 24px;border-radius:8px;font-size:14px;font-family:var(--font-display);font-weight:500;cursor:pointer;transition:all .2s;margin-left:10px}
+.btn-outline:hover{background:var(--blue-glow)}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:32px 0}
+.feature-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:left;transition:border-color .2s}
+.feature-card:hover{border-color:var(--border2)}
+.feature-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:16px}
+.feature-name{font-family:var(--font-display);font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px}
+.feature-desc{font-size:13px;color:var(--text2);line-height:1.6}
+
+/* AI MODULE */
+.ai-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+.ai-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
+.ai-card-icon{font-size:24px;margin-bottom:10px}
+.ai-card-name{font-family:var(--font-display);font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px}
+.ai-card-desc{font-size:12px;color:var(--text2);line-height:1.6}
+.ai-acc{font-family:var(--font-mono);font-size:20px;color:var(--teal);font-weight:500;margin-top:10px}
+.btn-run{background:linear-gradient(135deg,var(--teal),#0d9488);color:white;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-family:var(--font-display);font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px}
+.btn-run:hover{opacity:.9}
+.rec-panel{background:var(--surface);border:1px solid var(--teal)30;border-radius:12px;padding:18px;margin-top:16px;border-left:3px solid var(--teal)}
+.rec-title{font-size:12px;font-family:var(--font-mono);color:var(--teal);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.rec-item{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px;color:var(--text2)}
+.rec-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);margin-top:5px;flex-shrink:0}
+
+/* MONITORING */
+.monitor-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.monitor-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative}
+.mon-status{position:absolute;top:14px;right:14px;width:8px;height:8px;border-radius:50%}
+.mon-status.safe{background:var(--green);box-shadow:0 0 8px var(--green)}
+.mon-status.warn{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.mon-status.danger{background:var(--red);box-shadow:0 0 8px var(--red);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.mon-label{font-size:11px;color:var(--text3);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.mon-value{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px}
+.mon-sub{font-size:12px;color:var(--text2)}
+.progress-bar{height:4px;background:#ffffff10;border-radius:2px;margin-top:10px;overflow:hidden}
+.progress-fill{height:100%;border-radius:2px;transition:width .3s}
+.atm-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.atm-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.atm-id{font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-bottom:6px}
+.atm-val{font-size:15px;font-weight:600;font-family:var(--font-display)}
+
+/* OPTIMIZATION */
+.opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.schedule-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.schedule-item:last-child{border-bottom:none}
+.sch-left{display:flex;align-items:center;gap:10px}
+.sch-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sch-name{font-size:13px;color:var(--text)}
+.sch-time{font-size:11px;color:var(--text3);margin-top:2px}
+.sch-amount{font-family:var(--font-mono);font-size:13px;color:var(--blue)}
+
+/* INTEGRATIONS */
+.int-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.int-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px;transition:border-color .2s}
+.int-card:hover{border-color:var(--blue)50}
+.int-header{display:flex;align-items:center;gap:12px}
+.int-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.int-name{font-family:var(--font-display);font-size:14px;font-weight:600;color:var(--text)}
+.int-type{font-size:11px;color:var(--text3)}
+.int-status{display:flex;align-items:center;gap:6px;font-size:12px}
+.int-connected{color:var(--green)}
+.int-desc{font-size:12px;color:var(--text2);line-height:1.6}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+    <div class="logo-name">CashFlow AI</div>
+    <div class="logo-tag">Treasury Intelligence</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="navigate('landing',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      Platform
+    </div>
+    <div class="nav-item" onclick="navigate('dashboard',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-section" style="margin-top:8px">Analytics</div>
+    <div class="nav-item" onclick="navigate('ai',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+      AI Prediction
+    </div>
+    <div class="nav-item" onclick="navigate('monitor',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Monitoring
+    </div>
+    <div class="nav-section" style="margin-top:8px">Operations</div>
+    <div class="nav-item" onclick="navigate('optimize',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Optimization
+    </div>
+    <div class="nav-item" onclick="navigate('integrations',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+      Integrations
+    </div>
+    <a class="nav-item" href="./notebook-report.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+      Notebook Report
+    </a>
+  </nav>
+  <div class="sidebar-bottom">
+    <div><span class="status-dot"></span><span class="status-label">Systems Operational</span></div>
+    <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:var(--font-mono)">UZB-BANK · v2.4.1</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="page-title" id="topbar-title">Platform Overview</div>
+      <div class="page-sub" id="topbar-sub">AI-Based Cash Balance Forecasting System</div>
+    </div>
+    <div class="topbar-right">
+      <div class="badge">LIVE · 14:38 UZT</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:white">TA</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- LANDING -->
+    <div class="page-section active" id="page-landing">
+      <div class="hero">
+        <div class="hero-eyebrow">University Research Project · 2025</div>
+        <div class="hero-title">AI-Powered <span>Cash Balance</span><br>Forecasting System</div>
+        <div class="hero-sub">Intelligent treasury optimization for modern banks. Predict cash demand, eliminate shortages, and automate incassation scheduling using machine learning.</div>
+        <button class="btn-primary" onclick="navigate('dashboard',document.querySelector('[onclick*=dashboard]'))">Open Dashboard</button>
+        <button class="btn-outline" onclick="navigate('ai',document.querySelector('[onclick*=\"ai,\"]'))">View AI Models</button>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card"><div class="feature-icon" style="background:var(--blue-glow)">🔮</div><div class="feature-name">Demand Forecasting</div><div class="feature-desc">Prophet + LSTM models predict cash needs 7–30 days ahead with 92% accuracy across all branches.</div></div>
+        <div class="feature-card"><div class="feature-icon" style="background:var(--teal-glow)">📊</div><div class="feature-name">Seasonality Analysis</div><div class="feature-desc">Captures salary days, Navruz, Ramadan, and monthly peaks (1–5, 10–15, 25–30) automatically.</div></div>
+        <div class="feature-card"><div class="feature-icon" style="background:var(--amber-glow)">⚡</div><div class="feature-name">Real-Time Alerts</div><div class="feature-desc">Instant risk notifications when cash levels approach critical thresholds at any kassa or ATM.</div></div>
+        <div class="feature-card"><div class="feature-icon" style="background:var(--green-glow)">🚚</div><div class="feature-name">Smart Incassation</div><div class="feature-desc">Optimize cash delivery schedules to minimize logistics costs and prevent shortages simultaneously.</div></div>
+        <div class="feature-card"><div class="feature-icon" style="background:var(--red-glow)">🧠</div><div class="feature-name">Anomaly Detection</div><div class="feature-desc">ARIMA-based anomaly detection flags unusual transaction patterns before they impact liquidity.</div></div>
+        <div class="feature-card"><div class="feature-icon" style="background:var(--blue-glow)">🔗</div><div class="feature-name">ABS Integration</div><div class="feature-desc">Connects to core banking, CRM, payroll, and logistics systems for unified data pipelines.</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:8px;padding-top:24px;border-top:1px solid var(--border)">
+        <div style="text-align:center"><div style="font-family:var(--font-display);font-size:32px;font-weight:700;color:var(--blue)">92%</div><div style="font-size:12px;color:var(--text3)">Forecast Accuracy</div></div>
+        <div style="text-align:center"><div style="font-family:var(--font-display);font-size:32px;font-weight:700;color:var(--teal)">25</div><div style="font-size:12px;color:var(--text3)">Bank Branches</div></div>
+        <div style="text-align:center"><div style="font-family:var(--font-display);font-size:32px;font-weight:700;color:var(--green)">2.5B</div><div style="font-size:12px;color:var(--text3)">UZS Under Management</div></div>
+        <div style="text-align:center"><div style="font-family:var(--font-display);font-size:32px;font-weight:700;color:var(--amber)">-34%</div><div style="font-size:12px;color:var(--text3)">Shortage Incidents Reduced</div></div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page-section" id="page-dashboard">
+      <div class="kpi-grid">
+        <div class="kpi-card blue"><div class="kpi-label">Cash Balance</div><div class="kpi-value">2.51B</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">UZS</div><div class="kpi-delta delta-up"><span class="delta-icon">↑</span>+3.2% vs yesterday</div></div>
+        <div class="kpi-card teal"><div class="kpi-label">Forecast Demand</div><div class="kpi-value">1.83B</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">UZS next 24h</div><div class="kpi-delta delta-up"><span class="delta-icon">↑</span>+1.8% seasonal</div></div>
+        <div class="kpi-card amber"><div class="kpi-label">Shortage Risk</div><div class="kpi-value">12%</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">probability</div><div class="kpi-delta delta-down"><span class="delta-icon">↓</span>Low risk zone</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Excess Cash</div><div class="kpi-value">680M</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">UZS idle</div><div class="kpi-delta delta-down"><span class="delta-icon">↓</span>-5.1% optimized</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Model Accuracy</div><div class="kpi-value">92%</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">MAPE score</div><div class="kpi-delta delta-up"><span class="delta-icon">↑</span>+1.3% this week</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Daily Cash Demand Forecast</div><div class="chart-sub">Actual vs Predicted · 30 days</div></div>
+            <div class="chart-tag">Prophet Model</div>
+          </div>
+          <div style="position:relative;height:220px"><canvas id="demandChart" role="img" aria-label="Daily cash demand forecast chart showing actual vs predicted values over 30 days">Cash demand trend data for 30 days.</canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Shortage Probability</div><div class="chart-sub">Next 7 days</div></div>
+            <div class="chart-tag">Risk Score</div>
+          </div>
+          <div style="position:relative;height:220px"><canvas id="riskChart" role="img" aria-label="Shortage probability chart for next 7 days">Risk data for next 7 days.</canvas></div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Monthly Seasonality Pattern</div><div class="chart-sub">Average daily cash flow by month</div></div>
+            <div class="chart-tag">2024–2025</div>
+          </div>
+          <div style="position:relative;height:200px"><canvas id="seasonChart" role="img" aria-label="Monthly seasonality bar chart">Monthly cash flow seasonality.</canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Treasury Liquidity</div><div class="chart-sub">Coverage ratio by branch type</div></div>
+            <div class="chart-tag">Live</div>
+          </div>
+          <div style="position:relative;height:200px"><canvas id="liquidityChart" role="img" aria-label="Treasury liquidity doughnut chart">Liquidity coverage data.</canvas></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:600;color:var(--text)">Forecast vs Actual · Branch Detail</div>
+          <div class="badge">Last 7 days</div>
+        </div>
+        <table>
+          <thead><tr><th>Date</th><th>Branch</th><th>Forecast (M UZS)</th><th>Actual (M UZS)</th><th>Difference</th><th>Risk Level</th></tr></thead>
+          <tbody id="forecast-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AI -->
+    <div class="page-section" id="page-ai">
+      <div class="ai-grid">
+        <div class="ai-card" style="border-color:var(--blue)30">
+          <div class="ai-card-icon">📈</div>
+          <div class="ai-card-name">Prophet (Meta)</div>
+          <div class="ai-card-desc">Additive time-series model designed for business data with strong seasonal patterns and holiday effects. Handles salary days and Uzbek national holidays automatically.</div>
+          <div class="ai-acc">94.1%</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">accuracy score</div>
+        </div>
+        <div class="ai-card" style="border-color:var(--teal)30">
+          <div class="ai-card-icon">🔁</div>
+          <div class="ai-card-name">ARIMA / SARIMA</div>
+          <div class="ai-card-desc">Statistical model for stationary time series. Used for anomaly detection and short-term forecasting where data shows autoregressive properties and moving average components.</div>
+          <div class="ai-acc">89.7%</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">accuracy score</div>
+        </div>
+        <div class="ai-card" style="border-color:var(--purple)30">
+          <div class="ai-card-icon">🧠</div>
+          <div class="ai-card-name">LSTM Neural Net</div>
+          <div class="ai-card-desc">Long Short-Term Memory deep learning model captures complex non-linear patterns across multiple cash desk sequences. Best performance on branches with volatile demand.</div>
+          <div class="ai-acc">91.3%</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">accuracy score</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div><div style="font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--text)">Prediction Engine</div><div style="font-size:12px;color:var(--text3);margin-top:2px">Ensemble forecast with confidence intervals</div></div>
+        <button class="btn-run" id="run-btn" onclick="runForecast()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Run Forecast
+        </button>
+      </div>
+
+      <div class="chart-card">
+        <div style="position:relative;height:240px"><canvas id="forecastChart" role="img" aria-label="AI prediction chart showing forecast with confidence intervals">AI forecast output.</canvas></div>
+      </div>
+
+      <div class="rec-panel">
+        <div class="rec-title">AI Recommendations</div>
+        <div class="rec-item"><div class="rec-dot"></div>Branch Yunusobod needs cash replenishment by April 28 — predicted 340M UZS shortfall with 87% confidence.</div>
+        <div class="rec-item"><div class="rec-dot"></div>Reduce idle cash at Mirzo Ulugbek branch by 120M UZS — excess detected outside salary period peak.</div>
+        <div class="rec-item"><div class="rec-dot"></div>Schedule incassation on April 29 (salary day +2) for Chilanzar cluster — historical demand peak of +180% expected.</div>
+        <div class="rec-item"><div class="rec-dot"></div>Anomaly flagged at Sergeli-03 kassa: unusually high withdrawal rate (+3.2σ) since 11:00. Investigate and monitor.</div>
+      </div>
+    </div>
+
+    <!-- MONITOR -->
+    <div class="page-section" id="page-monitor">
+      <div class="monitor-grid">
+        <div class="monitor-card"><div class="mon-status safe"></div><div class="mon-label">Central Vault</div><div class="mon-value">1.24B</div><div class="mon-sub">UZS · 82% capacity</div><div class="progress-bar"><div class="progress-fill" style="width:82%;background:var(--green)"></div></div></div>
+        <div class="monitor-card"><div class="mon-status warn"></div><div class="mon-label">Branch A-Cluster</div><div class="mon-value">312M</div><div class="mon-sub">UZS · 38% capacity</div><div class="progress-bar"><div class="progress-fill" style="width:38%;background:var(--amber)"></div></div></div>
+        <div class="monitor-card"><div class="mon-status danger"></div><div class="mon-label">Sergeli Kassa-03</div><div class="mon-value">18M</div><div class="mon-sub">UZS · 7% capacity ⚠</div><div class="progress-bar"><div class="progress-fill" style="width:7%;background:var(--red)"></div></div></div>
+        <div class="monitor-card"><div class="mon-status safe"></div><div class="mon-label">ATM Network</div><div class="mon-value">940M</div><div class="mon-sub">UZS · 63% average</div><div class="progress-bar"><div class="progress-fill" style="width:63%;background:var(--blue)"></div></div></div>
+      </div>
+
+      <div class="chart-card" style="margin-bottom:16px">
+        <div class="chart-header"><div><div class="chart-title">Live Cash Level Tracker</div><div class="chart-sub">All branches · Last 24 hours</div></div><div class="chart-tag">Real-Time</div></div>
+        <div style="position:relative;height:200px"><canvas id="liveChart" role="img" aria-label="Live cash level tracking chart">Live cash tracking data.</canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header"><div class="chart-title">ATM / Kassa Status Overview</div></div>
+        <div class="atm-grid" id="atm-grid"></div>
+      </div>
+    </div>
+
+    <!-- OPTIMIZE -->
+    <div class="page-section" id="page-optimize">
+      <div class="opt-grid">
+        <div class="chart-card">
+          <div class="chart-header"><div><div class="chart-title">Cash Limit Optimization</div><div class="chart-sub">Recommended vs current limits</div></div></div>
+          <div style="position:relative;height:220px"><canvas id="optChart" role="img" aria-label="Cash limit optimization bar chart">Optimization data.</canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header"><div><div class="chart-title">Incassation Schedule</div><div class="chart-sub">Recommended deliveries</div></div></div>
+          <div id="schedule-list"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header"><div><div class="chart-title">Excess Cash Analysis</div><div class="chart-sub">Reduction opportunity by branch</div></div></div>
+          <div style="position:relative;height:200px"><canvas id="excessChart" role="img" aria-label="Excess cash reduction chart">Excess cash data.</canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header"><div><div class="chart-title">Shortage Prevention</div><div class="chart-sub">Actions taken this month</div></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+            <div style="background:var(--green-glow);border:1px solid var(--green)30;border-radius:10px;padding:14px;text-align:center"><div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--green)">14</div><div style="font-size:11px;color:var(--text3)">Shortages prevented</div></div>
+            <div style="background:var(--blue-glow);border:1px solid var(--blue)30;border-radius:10px;padding:14px;text-align:center"><div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--blue)">98M</div><div style="font-size:11px;color:var(--text3)">UZS cost saved</div></div>
+            <div style="background:var(--amber-glow);border:1px solid var(--amber)30;border-radius:10px;padding:14px;text-align:center"><div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--amber)">8</div><div style="font-size:11px;color:var(--text3)">Deliveries optimized</div></div>
+            <div style="background:var(--teal-glow);border:1px solid var(--teal)30;border-radius:10px;padding:14px;text-align:center"><div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--teal)">34%</div><div style="font-size:11px;color:var(--text3)">Excess reduction</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INTEGRATIONS -->
+    <div class="page-section" id="page-integrations">
+      <div class="int-grid">
+        <div class="int-card"><div class="int-header"><div class="int-icon" style="background:var(--blue-glow)">🏦</div><div><div class="int-name">ABS Core Banking</div><div class="int-type">Primary Data Source</div></div></div><div class="int-status int-connected">● Connected</div><div class="int-desc">Real-time transaction feeds, account balances, and branch cash data via secure API. Syncs every 15 minutes.</div></div>
+        <div class="int-card"><div class="int-header"><div class="int-icon" style="background:var(--teal-glow)">👥</div><div><div class="int-name">CRM System</div><div class="int-type">Customer Analytics</div></div></div><div class="int-status int-connected">● Connected</div><div class="int-desc">Customer flow patterns, segment behavior, and service demand prediction for branch-level forecasting.</div></div>
+        <div class="int-card"><div class="int-header"><div class="int-icon" style="background:var(--green-glow)">💰</div><div><div class="int-name">Payroll Systems</div><div class="int-type">Salary Day Signals</div></div></div><div class="int-status int-connected">● Connected</div><div class="int-desc">Corporate payroll calendar integration — automatically detects salary days and pre-positions cash reserves.</div></div>
+        <div class="int-card"><div class="int-header"><div class="int-icon" style="background:var(--amber-glow)">🚚</div><div><div class="int-name">Cash Logistics</div><div class="int-type">Incassation Partner</div></div></div><div class="int-status int-connected">● Connected</div><div class="int-desc">Automated delivery request generation and route optimization with logistics provider API.</div></div>
+        <div class="int-card"><div class="int-header"><div class="int-icon" style="background:var(--purple)20)">📅</div><div><div class="int-name">Calendar API</div><div class="int-type">Holiday & Events</div></div></div><div class="int-status int-connected">● Connected</div><div class="int-desc">National holiday calendar (Navruz, Eid, Independence Day) and banking event integration for demand adjustment.</div></div>
+        <div class="int-card"><div class="int-header"><div class="int-icon" style="background:#ffffff08">📡</div><div><div class="int-name">ATM Network</div><div class="int-type">Terminal Management</div></div></div><div class="int-status" style="color:var(--amber)">● Partial</div><div class="int-desc">ATM cash level monitoring. 18 of 25 terminals connected. Remaining 7 on legacy protocol — migration Q2 2025.</div></div>
+      </div>
+      <div class="chart-card" style="margin-top:16px">
+        <div class="chart-header"><div class="chart-title">Data Flow Architecture</div></div>
+        <div style="display:flex;align-items:center;justify-content:space-around;padding:20px 0;flex-wrap:wrap;gap:12px">
+          <div style="text-align:center"><div style="background:var(--blue-glow);border:1px solid var(--blue)30;border-radius:10px;padding:10px 16px;font-size:12px;color:var(--blue);font-family:var(--font-mono)">DATA SOURCES</div><div style="font-size:11px;color:var(--text3);margin-top:6px">ABS · CRM · ATM</div></div>
+          <div style="color:var(--text3);font-size:20px">→</div>
+          <div style="text-align:center"><div style="background:var(--teal-glow);border:1px solid var(--teal)30;border-radius:10px;padding:10px 16px;font-size:12px;color:var(--teal);font-family:var(--font-mono)">ETL PIPELINE</div><div style="font-size:11px;color:var(--text3);margin-top:6px">Clean · Transform · Load</div></div>
+          <div style="color:var(--text3);font-size:20px">→</div>
+          <div style="text-align:center"><div style="background:var(--purple)20;border:1px solid var(--purple)30;border-radius:10px;padding:10px 16px;font-size:12px;color:var(--purple);font-family:var(--font-mono)">AI ENGINE</div><div style="font-size:11px;color:var(--text3);margin-top:6px">Prophet · ARIMA · LSTM</div></div>
+          <div style="color:var(--text3);font-size:20px">→</div>
+          <div style="text-align:center"><div style="background:var(--green-glow);border:1px solid var(--green)30;border-radius:10px;padding:10px 16px;font-size:12px;color:var(--green);font-family:var(--font-mono)">DASHBOARD</div><div style="font-size:11px;color:var(--text3);margin-top:6px">Alerts · Reports · API</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+const pageMap={landing:'Platform Overview',dashboard:'Main Dashboard',ai:'AI Prediction Module',monitor:'Real-Time Monitoring',optimize:'Cash Optimization',integrations:'System Integrations'};
+const subMap={landing:'AI-Based Cash Balance Forecasting System',dashboard:'Live forecast data — 25 branches · UZS',ai:'Ensemble forecasting engine',monitor:'Live system status',optimize:'Incassation & limit optimization',integrations:'Connected systems'};
+
+function navigate(page,el){
+  document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('topbar-title').textContent=pageMap[page]||page;
+  document.getElementById('topbar-sub').textContent=subMap[page]||'';
+  if(page==='dashboard')initDashboardCharts();
+  if(page==='ai')initAICharts();
+  if(page==='monitor')initMonitorCharts();
+  if(page==='optimize')initOptCharts();
+}
+
+function randArr(n,min,max){return Array.from({length:n},()=>Math.round(min+Math.random()*(max-min)))}
+
+let chartsInited={};
+function initDashboardCharts(){
+  if(chartsInited.dashboard)return;chartsInited.dashboard=true;
+  const labels=Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-29+i);return`${d.getDate()}/${d.getMonth()+1}`});
+  const actual=randArr(30,800,2200);
+  const pred=actual.map(v=>Math.round(v*(.9+Math.random()*.2)));
+  new Chart(document.getElementById('demandChart'),{type:'line',data:{labels,datasets:[{label:'Actual',data:actual,borderColor:'#3b82f6',backgroundColor:'#3b82f610',tension:.4,borderWidth:2,pointRadius:0},{label:'Forecast',data:pred,borderColor:'#14b8a6',backgroundColor:'#14b8a608',tension:.4,borderWidth:2,borderDash:[5,3],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10},maxTicksLimit:8},grid:{color:'#ffffff08'}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
+
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  new Chart(document.getElementById('riskChart'),{type:'bar',data:{labels:days,datasets:[{label:'Risk %',data:[8,12,6,19,14,7,3],backgroundColor:days.map((_,i)=>[8,12,6,19,14,7,3][i]>15?'#ef444480':'#f59e0b80')}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:11}},grid:{display:false}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'%'},grid:{color:'#ffffff08'},max:25}}}});
+
+  new Chart(document.getElementById('seasonChart'),{type:'bar',data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{label:'Cash Flow',data:[1200,1100,1800,1400,1300,1500,1600,1400,1300,1350,1450,1900],backgroundColor:'#3b82f660',borderColor:'#3b82f6',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
+
+  new Chart(document.getElementById('liquidityChart'),{type:'doughnut',data:{labels:['Optimal','Warning','Critical'],datasets:[{data:[68,22,10],backgroundColor:['#22c55e80','#f59e0b80','#ef444480'],borderColor:['#22c55e','#f59e0b','#ef4444'],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8896b0',font:{size:11},padding:12}}}}});
+
+  const tableData=[{date:'Apr 25',branch:'Yunusobod',fc:340,act:318,risk:'low'},{date:'Apr 25',branch:'Chilanzar',fc:280,act:305,risk:'low'},{date:'Apr 24',branch:'Sergeli',fc:195,act:187,risk:'low'},{date:'Apr 24',branch:'Mirzo Ulug.',fc:420,act:388,risk:'med'},{date:'Apr 23',branch:'Bektemir',fc:160,act:198,risk:'med'},{date:'Apr 23',branch:'Olmazor',fc:310,act:271,risk:'low'},{date:'Apr 22',branch:'Uchtepa',fc:240,act:229,risk:'low'},{date:'Apr 22',branch:'Yashnobod',fc:175,act:204,risk:'high'}];
+  const tbody=document.getElementById('forecast-table');
+  tableData.forEach(r=>{const diff=r.act-r.fc;const diffStr=(diff>=0?'+':'')+diff+'M';const rClass=r.risk==='low'?'risk-low':r.risk==='med'?'risk-med':'risk-high';tbody.innerHTML+=`<tr><td style="font-family:var(--font-mono);font-size:12px">${r.date}</td><td>${r.branch}</td><td style="font-family:var(--font-mono)">${r.fc}M</td><td style="font-family:var(--font-mono)">${r.act}M</td><td style="font-family:var(--font-mono);color:${diff>=0?'var(--green)':'var(--red)'}">${diffStr}</td><td><span class="risk-badge ${rClass}">${r.risk.toUpperCase()}</span></td></tr>`});
+}
+
+function initAICharts(){
+  if(chartsInited.ai)return;chartsInited.ai=true;
+  const labels=Array.from({length:20},(_,i)=>`Day ${i+1}`);
+  const hist=randArr(14,900,1800);
+  const fcast=randArr(6,1100,1900);
+  const upper=fcast.map(v=>v+Math.round(v*.12));
+  const lower=fcast.map(v=>v-Math.round(v*.12));
+  new Chart(document.getElementById('forecastChart'),{type:'line',data:{labels,datasets:[{label:'Historical',data:[...hist,...Array(6).fill(null)],borderColor:'#3b82f6',borderWidth:2,pointRadius:0,tension:.4},{label:'Forecast',data:[...Array(14).fill(null),...fcast],borderColor:'#14b8a6',borderWidth:2,borderDash:[6,3],pointRadius:3,tension:.4},{label:'Upper CI',data:[...Array(14).fill(null),...upper],borderColor:'#14b8a640',backgroundColor:'#14b8a615',fill:'+1',borderWidth:1,pointRadius:0,tension:.4},{label:'Lower CI',data:[...Array(14).fill(null),...lower],borderColor:'#14b8a640',fill:false,borderWidth:1,pointRadius:0,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{color:'#ffffff08'}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
+}
+
+function initMonitorCharts(){
+  if(chartsInited.monitor)return;chartsInited.monitor=true;
+  const hours=Array.from({length:24},(_,i)=>i+':00');
+  new Chart(document.getElementById('liveChart'),{type:'line',data:{labels:hours,datasets:[{label:'Central',data:randArr(24,1000,1400),borderColor:'#3b82f6',tension:.4,borderWidth:2,pointRadius:0},{label:'Branch A',data:randArr(24,200,450),borderColor:'#14b8a6',tension:.4,borderWidth:2,pointRadius:0},{label:'ATM Net',data:randArr(24,600,1100),borderColor:'#a855f7',tension:.4,borderWidth:2,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896b0',font:{size:11},padding:12}}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10},maxTicksLimit:8},grid:{color:'#ffffff08'}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
+  const atms=[{id:'ATM-01',val:78,c:'green'},{id:'ATM-02',val:45,c:'amber'},{id:'ATM-03',val:12,c:'red'},{id:'ATM-04',val:65,c:'green'},{id:'ATM-05',val:88,c:'green'},{id:'ATM-06',val:31,c:'amber'},{id:'ATM-07',val:72,c:'green'},{id:'ATM-08',val:5,c:'red'},{id:'ATM-09',val:58,c:'green'},{id:'ATM-10',val:44,c:'amber'}];
+  const grid=document.getElementById('atm-grid');
+  atms.forEach(a=>{grid.innerHTML+=`<div class="atm-card"><div class="atm-id">${a.id}</div><div class="atm-val" style="color:var(--${a.c})">${a.val}%</div><div style="font-size:10px;color:var(--text3);margin-top:4px">${a.c==='green'?'Safe':a.c==='amber'?'Warning':'Critical'}</div></div>`});
+}
+
+function initOptCharts(){
+  if(chartsInited.opt)return;chartsInited.opt=true;
+  const branches=['Yunusobod','Chilanzar','Sergeli','Mirzo Ulug.','Bektemir'];
+  new Chart(document.getElementById('optChart'),{type:'bar',data:{labels:branches,datasets:[{label:'Current Limit',data:[500,380,280,450,200],backgroundColor:'#3b82f640',borderColor:'#3b82f6',borderWidth:1},{label:'Recommended',data:[420,350,310,380,240],backgroundColor:'#14b8a640',borderColor:'#14b8a6',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896b0',font:{size:11},padding:10}}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
+  const schedules=[{name:'Yunusobod HQ',time:'Apr 28 · 09:00',amount:'320M UZS',c:'red'},{name:'Sergeli Branch',time:'Apr 28 · 14:00',amount:'180M UZS',c:'red'},{name:'Chilanzar',time:'Apr 29 · 10:00',amount:'240M UZS',c:'amber'},{name:'Bektemir',time:'Apr 30 · 09:00',amount:'120M UZS',c:'green'},{name:'Olmazor',time:'May 1 · 11:00',amount:'200M UZS',c:'green'}];
+  const sl=document.getElementById('schedule-list');
+  schedules.forEach(s=>{sl.innerHTML+=`<div class="schedule-item"><div class="sch-left"><div class="sch-dot" style="background:var(--${s.c})"></div><div><div class="sch-name">${s.name}</div><div class="sch-time">${s.time}</div></div></div><div class="sch-amount">${s.amount}</div></div>`});
+  const data=[180,120,95,60,40,25];
+  new Chart(document.getElementById('excessChart'),{type:'bar',data:{labels:['Mirzo U.','Yunusobod','Chilanzar','Olmazor','Uchtepa','Others'],datasets:[{label:'Excess (M)',data,backgroundColor:data.map(v=>v>100?'#ef444450':v>60?'#f59e0b50':'#22c55e50'),borderColor:data.map(v=>v>100?'#ef4444':v>60?'#f59e0b':'#22c55e'),borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
+}
+
+let forecasting=false;
+function runForecast(){
+  if(forecasting)return;
+  forecasting=true;
+  const btn=document.getElementById('run-btn');
+  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Running...';
+  btn.style.opacity='.7';
+  setTimeout(()=>{
+    if(chartsInited.ai){const c=Chart.getChart('forecastChart');if(c){c.destroy();chartsInited.ai=false;}}
+    initAICharts();
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Forecast';
+    btn.style.opacity='1';
+    forecasting=false;
+  },1400);
+}
+
+setTimeout(()=>{document.querySelectorAll('canvas').forEach(c=>{})},100);
+</script>
+</body>
+</html>
