@@ -264,11 +264,11 @@ tbody tr:hover td{background:#ffffff04;color:var(--text)}
     <!-- DASHBOARD -->
     <div class="page-section" id="page-dashboard">
       <div class="kpi-grid">
-        <div class="kpi-card blue"><div class="kpi-label">Cash Balance</div><div class="kpi-value">2.51B</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">UZS</div><div class="kpi-delta delta-up"><span class="delta-icon">↑</span>+3.2% vs yesterday</div></div>
-        <div class="kpi-card teal"><div class="kpi-label">Forecast Demand</div><div class="kpi-value">1.83B</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">UZS next 24h</div><div class="kpi-delta delta-up"><span class="delta-icon">↑</span>+1.8% seasonal</div></div>
-        <div class="kpi-card amber"><div class="kpi-label">Shortage Risk</div><div class="kpi-value">12%</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">probability</div><div class="kpi-delta delta-down"><span class="delta-icon">↓</span>Low risk zone</div></div>
-        <div class="kpi-card red"><div class="kpi-label">Excess Cash</div><div class="kpi-value">680M</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">UZS idle</div><div class="kpi-delta delta-down"><span class="delta-icon">↓</span>-5.1% optimized</div></div>
-        <div class="kpi-card green"><div class="kpi-label">Model Accuracy</div><div class="kpi-value">92%</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">MAPE score</div><div class="kpi-delta delta-up"><span class="delta-icon">↑</span>+1.3% this week</div></div>
+        <div class="kpi-card blue"><div class="kpi-label">Total ATM Balance</div><div class="kpi-value" id="kpi-balance">…</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">UZS · Day +1 pred.</div><div class="kpi-delta delta-up"><span class="delta-icon">↑</span>Live from API</div></div>
+        <div class="kpi-card teal"><div class="kpi-label">Forecast Demand</div><div class="kpi-value" id="kpi-demand">…</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">UZS withdrawals</div><div class="kpi-delta delta-up"><span class="delta-icon">↑</span>Next 24h predicted</div></div>
+        <div class="kpi-card amber"><div class="kpi-label">Critical ATMs</div><div class="kpi-value" id="kpi-risk">…</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">CRITICAL_EMPTY</div><div class="kpi-delta delta-down"><span class="delta-icon">⚠</span>Needs replenishment</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Low Cash ATMs</div><div class="kpi-value" id="kpi-excess">…</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">below 20% threshold</div><div class="kpi-delta delta-down"><span class="delta-icon">↓</span>LOW_CASH risk</div></div>
+        <div class="kpi-card green"><div class="kpi-label">ATMs Monitored</div><div class="kpi-value" id="kpi-atms">…</div><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:6px">in network</div><div class="kpi-delta delta-up"><span class="delta-icon">↑</span>Live tracking</div></div>
       </div>
 
       <div class="charts-grid">
@@ -369,10 +369,10 @@ tbody tr:hover td{background:#ffffff04;color:var(--text)}
     <!-- MONITOR -->
     <div class="page-section" id="page-monitor">
       <div class="monitor-grid">
-        <div class="monitor-card"><div class="mon-status safe"></div><div class="mon-label">Central Vault</div><div class="mon-value">1.24B</div><div class="mon-sub">UZS · 82% capacity</div><div class="progress-bar"><div class="progress-fill" style="width:82%;background:var(--green)"></div></div></div>
-        <div class="monitor-card"><div class="mon-status warn"></div><div class="mon-label">Branch A-Cluster</div><div class="mon-value">312M</div><div class="mon-sub">UZS · 38% capacity</div><div class="progress-bar"><div class="progress-fill" style="width:38%;background:var(--amber)"></div></div></div>
-        <div class="monitor-card"><div class="mon-status danger"></div><div class="mon-label">Sergeli Kassa-03</div><div class="mon-value">18M</div><div class="mon-sub">UZS · 7% capacity ⚠</div><div class="progress-bar"><div class="progress-fill" style="width:7%;background:var(--red)"></div></div></div>
-        <div class="monitor-card"><div class="mon-status safe"></div><div class="mon-label">ATM Network</div><div class="mon-value">940M</div><div class="mon-sub">UZS · 63% average</div><div class="progress-bar"><div class="progress-fill" style="width:63%;background:var(--blue)"></div></div></div>
+        <div class="monitor-card"><div class="mon-status safe" id="mon-dot-total"></div><div class="mon-label">Total ATM Balance</div><div class="mon-value" id="mon-total">…</div><div class="mon-sub" id="mon-total-sub">Loading live data…</div><div class="progress-bar"><div class="progress-fill" id="mon-bar-total" style="width:0%;background:var(--blue)"></div></div></div>
+        <div class="monitor-card"><div class="mon-status safe"></div><div class="mon-label">Safe ATMs</div><div class="mon-value" id="mon-safe">…</div><div class="mon-sub">balance ≥ 20% cap.</div><div class="progress-bar"><div class="progress-fill" id="mon-bar-safe" style="width:0%;background:var(--green)"></div></div></div>
+        <div class="monitor-card"><div class="mon-status warn" id="mon-dot-warn"></div><div class="mon-label">Low Cash ATMs</div><div class="mon-value" id="mon-warn">…</div><div class="mon-sub">below 20% threshold</div><div class="progress-bar"><div class="progress-fill" id="mon-bar-warn" style="width:0%;background:var(--amber)"></div></div></div>
+        <div class="monitor-card"><div class="mon-status danger" id="mon-dot-crit" style="animation:none"></div><div class="mon-label">Critical ATMs</div><div class="mon-value" id="mon-critical">…</div><div class="mon-sub">CRITICAL_EMPTY ⚠</div><div class="progress-bar"><div class="progress-fill" id="mon-bar-crit" style="width:0%;background:var(--red)"></div></div></div>
       </div>
 
       <div class="chart-card" style="margin-bottom:16px">
@@ -442,13 +442,30 @@ tbody tr:hover td{background:#ffffff04;color:var(--text)}
 
 <script>
 const pageMap={landing:'Platform Overview',dashboard:'Main Dashboard',ai:'AI Prediction Module',monitor:'Real-Time Monitoring',optimize:'Cash Optimization',integrations:'System Integrations'};
-const subMap={landing:'AI-Based Cash Balance Forecasting System',dashboard:'Live forecast data — 25 branches · UZS',ai:'Ensemble forecasting engine',monitor:'Live system status',optimize:'Incassation & limit optimization',integrations:'Connected systems'};
+const subMap={landing:'AI-Based Cash Balance Forecasting System',dashboard:'Live forecast data — ATM network · UZS',ai:'Ensemble forecasting engine',monitor:'Live system status',optimize:'Incassation & limit optimization',integrations:'Connected systems'};
 const API_BASE='https://ai-bank-cash-forecasting.onrender.com';
 
-async function fetchJson(path){
-  const res=await fetch(`${API_BASE}${path}`);
-  if(!res.ok)throw new Error(`HTTP ${res.status}`);
-  return res.json();
+// Retry with exponential backoff to handle Render free-tier cold starts (~30-60s wake time)
+async function fetchWithRetry(path,maxAttempts=5,baseDelay=5000){
+  for(let attempt=1;attempt<=maxAttempts;attempt++){
+    try{
+      const res=await fetch(`${API_BASE}${path}`);
+      if(!res.ok)throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    }catch(e){
+      if(attempt===maxAttempts)throw e;
+      const delay=baseDelay*Math.pow(1.8,attempt-1); // 5s, 9s, 16s, 29s
+      console.warn(`Fetch attempt ${attempt} failed (${e.message}). Retrying in ${Math.round(delay/1000)}s…`);
+      await new Promise(r=>setTimeout(r,delay));
+    }
+  }
+}
+
+function fmtUZS(v){
+  v=Number(v)||0;
+  if(v>=1e9)return(v/1e9).toFixed(2)+'B';
+  if(v>=1e6)return Math.round(v/1e6)+'M';
+  return String(v);
 }
 
 function riskClassFromCode(risk){
@@ -461,14 +478,17 @@ function renderForecastTable(rows){
   const tbody=document.getElementById('forecast-table');
   if(!tbody)return;
   tbody.innerHTML='';
-  rows.slice(0,10).forEach(r=>{
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;font-family:var(--font-mono)">No forecast data returned from backend.</td></tr>';
+    return;
+  }
+  rows.slice(0,15).forEach(r=>{
     const forecastM=Math.round((Number(r.Pred_Withdrawals)||0)/1_000_000);
     const balanceM=Math.round((Number(r.Pred_Balance)||0)/1_000_000);
     const diff=balanceM-forecastM;
     const diffStr=(diff>=0?'+':'')+diff+'M';
-    const risk=riskClassFromCode(r.Risk);
-    const rClass=risk==='low'?'risk-low':risk==='med'?'risk-med':'risk-high';
-    tbody.innerHTML+=`<tr><td style="font-family:var(--font-mono);font-size:12px">Day +${r.Day_Ahead}</td><td>${r.ID}</td><td style="font-family:var(--font-mono)">${forecastM}M</td><td style="font-family:var(--font-mono)">${balanceM}M</td><td style="font-family:var(--font-mono);color:${diff>=0?'var(--green)':'var(--red)'}">${diffStr}</td><td><span class="risk-badge ${rClass}">${(r.Risk||'OK')}</span></td></tr>`;
+    const rClass=riskClassFromCode(r.Risk)==='low'?'risk-low':riskClassFromCode(r.Risk)==='med'?'risk-med':'risk-high';
+    tbody.innerHTML+=`<tr><td style="font-family:var(--font-mono);font-size:12px">Day +${r.Day_Ahead}</td><td>${r.ID}</td><td style="font-family:var(--font-mono)">${forecastM}M</td><td style="font-family:var(--font-mono)">${balanceM}M</td><td style="font-family:var(--font-mono);color:${diff>=0?'var(--green)':'var(--red)'}">${diffStr}</td><td><span class="risk-badge ${rClass}">${r.Risk||'OK'}</span></td></tr>`;
   });
 }
 
@@ -476,33 +496,110 @@ function renderAIRecommendations(alertRows){
   const container=document.getElementById('ai-recommendations');
   if(!container)return;
   container.innerHTML='';
-  const rows=alertRows.slice(0,4);
-  if(!rows.length){
-    container.innerHTML='<div class="rec-item"><div class="rec-dot"></div>No active alerts. Cash levels are currently in safe range.</div>';
+  if(!alertRows.length){
+    container.innerHTML='<div class="rec-item"><div class="rec-dot"></div>No active alerts. All ATM cash levels are currently in safe range.</div>';
     return;
   }
-  rows.forEach(r=>{
+  alertRows.slice(0,6).forEach(r=>{
     const balM=Math.round((Number(r.Pred_Balance)||0)/1_000_000);
-    container.innerHTML+=`<div class="rec-item"><div class="rec-dot"></div>${r.ID} (${r.ATM_Type||'ATM'}) is flagged as ${r.Risk}. Predicted balance in Day +${r.Day_Ahead}: ${balM}M UZS. Schedule replenishment.</div>`;
+    container.innerHTML+=`<div class="rec-item"><div class="rec-dot" style="background:${r.Risk==='CRITICAL_EMPTY'?'var(--red)':'var(--amber)'}"></div>${r.ID} (${r.ATM_Type||'ATM'}) — <strong>${r.Risk}</strong>. Predicted balance Day +${r.Day_Ahead}: ${balM}M UZS. Schedule replenishment.</div>`;
   });
 }
 
-async function loadLiveForecastTable(){
-  try{
-    const data=await fetchJson('/forecast?forecast_days=2');
-    renderForecastTable(data.rows||[]);
-  }catch(e){
-    console.error('Live forecast fetch failed',e);
-  }
+function updateKPIs(forecastRows,alertRows){
+  const day1=forecastRows.filter(r=>r.Day_Ahead===1);
+  const totalBal=day1.reduce((s,r)=>s+(Number(r.Pred_Balance)||0),0);
+  const totalDemand=day1.reduce((s,r)=>s+(Number(r.Pred_Withdrawals)||0),0);
+  const critCount=alertRows.filter(r=>r.Risk==='CRITICAL_EMPTY').length;
+  const warnCount=alertRows.filter(r=>r.Risk==='LOW_CASH').length;
+  const uniqueATMs=new Set(forecastRows.map(r=>r.ID)).size;
+  const safeCount=uniqueATMs-critCount-warnCount;
+
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+  set('kpi-balance',fmtUZS(totalBal));
+  set('kpi-demand',fmtUZS(totalDemand));
+  set('kpi-risk',critCount);
+  set('kpi-excess',warnCount);
+  set('kpi-atms',uniqueATMs);
+
+  // Monitor summary cards
+  set('mon-total',fmtUZS(totalBal));
+  set('mon-total-sub','UZS total · '+uniqueATMs+' ATMs');
+  set('mon-safe',safeCount>0?safeCount:0);
+  set('mon-warn',warnCount);
+  set('mon-critical',critCount);
+
+  // Progress bars (as % of total ATMs)
+  const pct=(n)=>uniqueATMs>0?Math.round(n/uniqueATMs*100):0;
+  const bar=(id,w,col)=>{const el=document.getElementById(id);if(el){el.style.width=w+'%';el.style.background=col;}};
+  bar('mon-bar-total',Math.min(Math.round(totalBal/1e9*50),100),'var(--blue)');
+  bar('mon-bar-safe',pct(safeCount),'var(--green)');
+  bar('mon-bar-warn',pct(warnCount),'var(--amber)');
+  bar('mon-bar-crit',pct(critCount),'var(--red)');
+
+  // Animate critical dot only when there are critical ATMs
+  const critDot=document.getElementById('mon-dot-crit');
+  if(critDot)critDot.style.animation=critCount>0?'pulse 1.5s infinite':'none';
 }
 
-async function loadLiveAIRecommendations(){
-  try{
-    const data=await fetchJson('/alerts?forecast_days=2');
-    renderAIRecommendations(data.alerts||[]);
-  }catch(e){
-    console.error('Live alerts fetch failed',e);
+function renderMonitorATMs(forecastRows){
+  const grid=document.getElementById('atm-grid');
+  if(!grid)return;
+  grid.innerHTML='';
+  const byATM={};
+  forecastRows.forEach(r=>{if(r.Day_Ahead===1)byATM[r.ID]=r;});
+  const atms=Object.values(byATM);
+  if(!atms.length){
+    grid.innerHTML='<div style="color:var(--text3);font-size:12px;padding:12px;font-family:var(--font-mono)">No ATM data available.</div>';
+    return;
   }
+  atms.forEach(r=>{
+    const color=r.Risk==='CRITICAL_EMPTY'?'red':r.Risk==='LOW_CASH'?'amber':'green';
+    const label=r.Risk==='CRITICAL_EMPTY'?'Critical':r.Risk==='LOW_CASH'?'Warning':'Safe';
+    const balM=Math.round((Number(r.Pred_Balance)||0)/1_000_000);
+    grid.innerHTML+=`<div class="atm-card"><div class="atm-id">${r.ID}</div><div class="atm-val" style="color:var(--${color})">${balM}M</div><div style="font-size:10px;color:var(--text3);margin-top:4px">${label}</div></div>`;
+  });
+}
+
+// Single shared cache so every page section reuses the same fetch
+let liveCache=null;
+let liveFetching=false;
+let liveFetchPromise=null;
+
+async function loadAllLiveData(){
+  if(liveCache){
+    // Already fetched — just re-render
+    renderForecastTable(liveCache.forecast.rows||[]);
+    renderAIRecommendations(liveCache.alerts.alerts||[]);
+    updateKPIs(liveCache.forecast.rows||[],liveCache.alerts.alerts||[]);
+    renderMonitorATMs(liveCache.forecast.rows||[]);
+    return;
+  }
+  // If a fetch is already in flight, wait for it
+  if(liveFetchPromise){await liveFetchPromise;return;}
+
+  const tbody=document.getElementById('forecast-table');
+  if(tbody)tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:28px;font-family:var(--font-mono)">⟳ Connecting to backend… (cold start may take up to 60s)</td></tr>';
+
+  liveFetchPromise=(async()=>{
+    try{
+      const [fData,aData]=await Promise.all([
+        fetchWithRetry('/forecast?forecast_days=3'),
+        fetchWithRetry('/alerts?forecast_days=3')
+      ]);
+      liveCache={forecast:fData,alerts:aData};
+      renderForecastTable(fData.rows||[]);
+      renderAIRecommendations(aData.alerts||[]);
+      updateKPIs(fData.rows||[],aData.alerts||[]);
+      renderMonitorATMs(fData.rows||[]);
+    }catch(e){
+      console.error('Live data fetch failed after all retries:',e);
+      if(tbody)tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--red);padding:28px;font-family:var(--font-mono)">Backend unreachable. Check Render deployment logs.</td></tr>';
+    }finally{
+      liveFetchPromise=null;
+    }
+  })();
+  await liveFetchPromise;
 }
 
 function navigate(page,el){
@@ -535,10 +632,8 @@ function initDashboardCharts(){
 
   new Chart(document.getElementById('liquidityChart'),{type:'doughnut',data:{labels:['Optimal','Warning','Critical'],datasets:[{data:[68,22,10],backgroundColor:['#22c55e80','#f59e0b80','#ef444480'],borderColor:['#22c55e','#f59e0b','#ef4444'],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8896b0',font:{size:11},padding:12}}}}});
 
-  const tableData=[{date:'Apr 25',branch:'Yunusobod',fc:340,act:318,risk:'low'},{date:'Apr 25',branch:'Chilanzar',fc:280,act:305,risk:'low'},{date:'Apr 24',branch:'Sergeli',fc:195,act:187,risk:'low'},{date:'Apr 24',branch:'Mirzo Ulug.',fc:420,act:388,risk:'med'},{date:'Apr 23',branch:'Bektemir',fc:160,act:198,risk:'med'},{date:'Apr 23',branch:'Olmazor',fc:310,act:271,risk:'low'},{date:'Apr 22',branch:'Uchtepa',fc:240,act:229,risk:'low'},{date:'Apr 22',branch:'Yashnobod',fc:175,act:204,risk:'high'}];
-  const tbody=document.getElementById('forecast-table');
-  tableData.forEach(r=>{const diff=r.act-r.fc;const diffStr=(diff>=0?'+':'')+diff+'M';const rClass=r.risk==='low'?'risk-low':r.risk==='med'?'risk-med':'risk-high';tbody.innerHTML+=`<tr><td style="font-family:var(--font-mono);font-size:12px">${r.date}</td><td>${r.branch}</td><td style="font-family:var(--font-mono)">${r.fc}M</td><td style="font-family:var(--font-mono)">${r.act}M</td><td style="font-family:var(--font-mono);color:${diff>=0?'var(--green)':'var(--red)'}">${diffStr}</td><td><span class="risk-badge ${rClass}">${r.risk.toUpperCase()}</span></td></tr>`});
-  loadLiveForecastTable();
+  // No mock table data — load live immediately
+  loadAllLiveData();
 }
 
 function initAICharts(){
@@ -549,16 +644,18 @@ function initAICharts(){
   const upper=fcast.map(v=>v+Math.round(v*.12));
   const lower=fcast.map(v=>v-Math.round(v*.12));
   new Chart(document.getElementById('forecastChart'),{type:'line',data:{labels,datasets:[{label:'Historical',data:[...hist,...Array(6).fill(null)],borderColor:'#3b82f6',borderWidth:2,pointRadius:0,tension:.4},{label:'Forecast',data:[...Array(14).fill(null),...fcast],borderColor:'#14b8a6',borderWidth:2,borderDash:[6,3],pointRadius:3,tension:.4},{label:'Upper CI',data:[...Array(14).fill(null),...upper],borderColor:'#14b8a640',backgroundColor:'#14b8a615',fill:'+1',borderWidth:1,pointRadius:0,tension:.4},{label:'Lower CI',data:[...Array(14).fill(null),...lower],borderColor:'#14b8a640',fill:false,borderWidth:1,pointRadius:0,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10}},grid:{color:'#ffffff08'}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
-  loadLiveAIRecommendations();
+  // Reuse cache if already loaded, otherwise trigger fetch
+  if(liveCache)renderAIRecommendations(liveCache.alerts.alerts||[]);
+  else loadAllLiveData();
 }
 
 function initMonitorCharts(){
   if(chartsInited.monitor)return;chartsInited.monitor=true;
   const hours=Array.from({length:24},(_,i)=>i+':00');
   new Chart(document.getElementById('liveChart'),{type:'line',data:{labels:hours,datasets:[{label:'Central',data:randArr(24,1000,1400),borderColor:'#3b82f6',tension:.4,borderWidth:2,pointRadius:0},{label:'Branch A',data:randArr(24,200,450),borderColor:'#14b8a6',tension:.4,borderWidth:2,pointRadius:0},{label:'ATM Net',data:randArr(24,600,1100),borderColor:'#a855f7',tension:.4,borderWidth:2,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896b0',font:{size:11},padding:12}}},scales:{x:{ticks:{color:'#4a5a75',font:{size:10},maxTicksLimit:8},grid:{color:'#ffffff08'}},y:{ticks:{color:'#4a5a75',font:{size:10},callback:v=>v+'M'},grid:{color:'#ffffff08'}}}}});
-  const atms=[{id:'ATM-01',val:78,c:'green'},{id:'ATM-02',val:45,c:'amber'},{id:'ATM-03',val:12,c:'red'},{id:'ATM-04',val:65,c:'green'},{id:'ATM-05',val:88,c:'green'},{id:'ATM-06',val:31,c:'amber'},{id:'ATM-07',val:72,c:'green'},{id:'ATM-08',val:5,c:'red'},{id:'ATM-09',val:58,c:'green'},{id:'ATM-10',val:44,c:'amber'}];
-  const grid=document.getElementById('atm-grid');
-  atms.forEach(a=>{grid.innerHTML+=`<div class="atm-card"><div class="atm-id">${a.id}</div><div class="atm-val" style="color:var(--${a.c})">${a.val}%</div><div style="font-size:10px;color:var(--text3);margin-top:4px">${a.c==='green'?'Safe':a.c==='amber'?'Warning':'Critical'}</div></div>`});
+  // Reuse cache if already loaded, otherwise trigger fetch
+  if(liveCache)renderMonitorATMs(liveCache.forecast.rows||[]);
+  else loadAllLiveData();
 }
 
 function initOptCharts(){
@@ -579,6 +676,7 @@ function runForecast(){
   const btn=document.getElementById('run-btn');
   btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Running...';
   btn.style.opacity='.7';
+  liveCache=null; // Force fresh fetch from backend
   setTimeout(()=>{
     if(chartsInited.ai){const c=Chart.getChart('forecastChart');if(c){c.destroy();chartsInited.ai=false;}}
     initAICharts();
@@ -587,8 +685,6 @@ function runForecast(){
     forecasting=false;
   },1400);
 }
-
-setTimeout(()=>{document.querySelectorAll('canvas').forEach(c=>{})},100);
 </script>
 </body>
 </html>
