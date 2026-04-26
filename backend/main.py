@@ -9,8 +9,24 @@ from backend.forecasting import compute_predictions
 
 app = FastAPI(title="AI Bank Cash Forecast API", version="1.0.0")
 
+def parse_frontend_origins(raw_origins: str) -> list[str]:
+    value = (raw_origins or "").strip()
+    if not value or value == "*":
+        return ["*"]
+
+    parsed: list[str] = []
+    for origin in (part.strip() for part in value.split(",")):
+        if not origin:
+            continue
+        # Accept common user input without protocol and normalize to https.
+        if not origin.startswith(("http://", "https://")):
+            origin = f"https://{origin}"
+        parsed.append(origin.rstrip("/"))
+    return parsed or ["*"]
+
+
 frontend_origins = os.getenv("FRONTEND_ORIGINS", "*")
-allowed_origins = ["*"] if frontend_origins.strip() == "*" else [origin.strip() for origin in frontend_origins.split(",") if origin.strip()]
+allowed_origins = parse_frontend_origins(frontend_origins)
 frontend_origin_regex = os.getenv("FRONTEND_ORIGIN_REGEX", r"https://.*\.vercel\.app")
 
 app.add_middleware(
@@ -21,6 +37,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+def root() -> dict:
+    return {"service": "ai-bank-cash-forecast-api", "status": "running"}
 
 
 @app.get("/health")

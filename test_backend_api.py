@@ -37,6 +37,22 @@ def test_health():
     assert payload["status"] == "ok"
 
 
+def test_root():
+    client = TestClient(backend_main.app)
+    response = client.get("/")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "running"
+
+
+def test_parse_frontend_origins_normalizes_missing_scheme():
+    origins = backend_main.parse_frontend_origins("ai-bank-cash-forecasting-xckh.vercel.app, http://localhost:8080/")
+    assert origins == [
+        "https://ai-bank-cash-forecasting-xckh.vercel.app",
+        "http://localhost:8080",
+    ]
+
+
 def test_forecast_and_alerts(monkeypatch):
     monkeypatch.setattr(backend_main, "load_data", fake_data)
     client = TestClient(backend_main.app)
